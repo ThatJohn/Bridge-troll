@@ -1,0 +1,13 @@
+<div>
+  <%= f.label :chapter_id %>
+</div>
+<%= f.collection_select(:chapter_id,
+                        Chapter.all,
+                        :id,
+                        :name,
+                        {prompt: true}) %>
+<script>
+  window.whenReady(function () {
+    $('#<%= f.object.class.name.underscore %>_chapter_id').select2({width: '100%'});
+  });
+</script>
