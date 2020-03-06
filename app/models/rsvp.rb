@@ -1,13 +1,13 @@
-class Rsvp < ActiveRecord::Base
+# frozen_string_literal: true
+
+class Rsvp < ApplicationRecord
   include PresenceTrackingBoolean
 
-  PERMITTED_ATTRIBUTES = [:subject_experience, :teaching, :taing, :teaching_experience, :teaching_experience, :childcare_info, :operating_system_id, :job_details, :class_level, :dietary_info, :needs_childcare, :plus_one_host]
-
-  belongs_to :bridgetroll_user, class_name: 'User', foreign_key: :user_id
-  belongs_to :meetup_user, class_name: 'MeetupUser', foreign_key: :user_id
+  belongs_to :bridgetroll_user, class_name: 'User', foreign_key: :user_id, optional: true, inverse_of: :rsvps
+  belongs_to :meetup_user, class_name: 'MeetupUser', foreign_key: :user_id, optional: true, inverse_of: :rsvps
   belongs_to :user, polymorphic: true
   belongs_to :event, inverse_of: :rsvps
-  belongs_to :section
+  belongs_to :section, optional: true
 
   delegate :full_name, to: :user
   delegate :historical?, to: :event, allow_nil: true
@@ -15,15 +15,15 @@ class Rsvp < ActiveRecord::Base
   has_many :rsvp_sessions, dependent: :destroy
   has_many :event_sessions, through: :rsvp_sessions
   has_many :dietary_restrictions, dependent: :destroy
-  has_many :event_email_recipients, foreign_key: :recipient_rsvp_id, dependent: :destroy
+  has_many :event_email_recipients, foreign_key: :recipient_rsvp_id, dependent: :destroy, inverse_of: :recipient_rsvp
 
   has_one  :survey, dependent: :destroy
 
-  validates_uniqueness_of :user_id, scope: [:event_id, :user_type]
-  validates_presence_of :user, :event, :role
-  validates_presence_of :childcare_info, if: :needs_childcare?
+  validates :user_id, uniqueness: { scope: %i[event_id user_type] }
+  validates :role, presence: true
+  validates :childcare_info, presence: { if: :needs_childcare? }
 
-  scope :confirmed, -> { where("waitlist_position IS NULL") }
+  scope :confirmed, -> { where('waitlist_position IS NULL') }
   scope :checked_in, -> { where.not(checkins_count: 0) }
   scope :needs_childcare, -> { where("childcare_info <> ''") }
 
@@ -65,9 +65,7 @@ class Rsvp < ActiveRecord::Base
   add_presence_tracking_boolean(:needs_childcare, :childcare_info)
 
   def set_defaults
-    if has_attribute?(:token)
-      self.token ||= SecureRandom.uuid.gsub(/\-/, '')
-    end
+    self.token ||= SecureRandom.uuid.delete('-') if has_attribute?(:token)
   end
 
   # Dispatch to the two possible types of user, the modern kind (User) or imports
@@ -92,12 +90,10 @@ class Rsvp < ActiveRecord::Base
 
     return unless user
 
-    prior_rsvps = user.rsvps.includes(:event).order('events.ends_at')
+    last_rsvp = find_last_relevant_rsvp(user, event)
+    return unless last_rsvp
 
-    last_rsvp = prior_rsvps.where('events.course_id = ?', event.course_id).last || prior_rsvps.last
-    if last_rsvp
-      assign_attributes(last_rsvp.carryover_attributes(event.course_id, role))
-    end
+    assign_attributes(last_rsvp.carryover_attributes(event.course, role))
   end
 
   def selectable_sessions
@@ -112,11 +108,11 @@ class Rsvp < ActiveRecord::Base
   end
 
   def level_title
-    level[:title] if role == Role::STUDENT
+    level.title if role == Role::STUDENT
   end
 
   def level
-    event.levels.find {|level| level[:level] == class_level}
+    event.levels.find { |level| level.num == class_level }
   end
 
   def operating_system_title
@@ -134,7 +130,7 @@ class Rsvp < ActiveRecord::Base
   end
 
   def dietary_restriction_diets
-    self.dietary_restrictions.map(&:restriction)
+    dietary_restrictions.map(&:restriction)
   end
 
   def dietary_restriction_diets=(diets)
@@ -147,7 +143,7 @@ class Rsvp < ActiveRecord::Base
     return false if event.historical?
     return false if event.upcoming?
 
-    checkins_count == 0
+    checkins_count.zero?
   end
 
   def checked_in_session_ids
@@ -172,6 +168,7 @@ class Rsvp < ActiveRecord::Base
 
   def requires_session_rsvp?
     return false if role == Role::ORGANIZER
+
     event.try(:upcoming?)
   end
 
@@ -181,15 +178,13 @@ class Rsvp < ActiveRecord::Base
     return VolunteerPreference::BOTH.id    if teaching && taing
     return VolunteerPreference::TEACHER.id if teaching
     return VolunteerPreference::TA.id      if taing
+
     VolunteerPreference::NEITHER.id
   end
 
-  def carryover_attributes(new_event_course_id, role)
+  def carryover_attributes(course, role)
     fields = [:job_details]
-
-    if role == Role::VOLUNTEER && event.course_id == new_event_course_id
-      fields += [:subject_experience, :teaching_experience]
-    end
+    fields += %i[subject_experience teaching_experience] if role == Role::VOLUNTEER && event.course == course
 
     fields.each_with_object({}) do |field, hsh|
       hsh[field] = send(field)
@@ -205,12 +200,23 @@ class Rsvp < ActiveRecord::Base
   end
 
   def update_counter_cache
-    event.update_rsvp_counts if event
+    event&.update_rsvp_counts
   end
 
-  def as_json(options={})
+  def as_json(options = {})
     options[:methods] ||= []
-    options[:methods] |= [:full_name, :operating_system_title, :operating_system_type, :level_title]
+    options[:methods] |= %i[full_name operating_system_title operating_system_type level_title]
     super(options)
+  end
+
+  private
+
+  def find_last_relevant_rsvp(user, event)
+    prior_rsvps = user.rsvps.includes(:event).order('events.ends_at')
+    if event.course
+      prior_rsvps.where('events.course_id = ?', event.course.id).last || prior_rsvps.last
+    else
+      prior_rsvps.last
+    end
   end
 end

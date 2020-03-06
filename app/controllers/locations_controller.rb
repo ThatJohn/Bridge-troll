@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 class LocationsController < ApplicationController
-  before_action :authenticate_user!, except: [:show, :index]
-  before_action :assign_location, only: [:show, :edit, :update, :destroy, :archive]
+  before_action :authenticate_user!, except: %i[show index]
+  before_action :assign_location, only: %i[show edit update destroy archive]
 
   def index
     skip_authorization
@@ -26,7 +28,7 @@ class LocationsController < ApplicationController
 
     respond_to do |format|
       if @location.save
-        format.html { redirect_to @location, notice: 'Location was successfully created.'}
+        format.html { redirect_to @location, notice: 'Location was successfully created.' }
         format.js   {}
       else
         format.html { render :new }
@@ -48,7 +50,7 @@ class LocationsController < ApplicationController
 
     @location.gmaps = false
 
-    if @location.update_attributes(location_params)
+    if @location.update(location_params)
       redirect_to @location, notice: 'Location was successfully updated.'
     else
       render :edit
@@ -66,9 +68,7 @@ class LocationsController < ApplicationController
   private
 
   def location_params
-    attributes = Location::PERMITTED_ATTRIBUTES
-    attributes = attributes + [:contact_info, :notes] if @location && policy(@location).edit_additional_details?
-    params.require(:location).permit(attributes)
+    permitted_attributes(@location || Location.new)
   end
 
   def assign_location

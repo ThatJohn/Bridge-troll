@@ -12,11 +12,18 @@
 
 <script>
   window.whenReady(function () {
+    function createLink(params) {
+      var link = document.createElement('a');
+      link.setAttribute('href', params.url);
+      link.innerHTML = params.text;
+      return link.outerHTML;
+    }
+
     $('#past-events-table').DataTable({
       paging: true,
       pageLength: 10,
       serverSide: true,
-      searching: false,
+      searching: true,
       sort: false,
       ajax: '/events.json?type=past&serialization_format=dataTables',
       columns: [
@@ -29,7 +36,15 @@
         targets: 0,
         render: function ( data, type, row ) {
           if (row.url) {
-            return "<a href='" + row.url + "'>" + row.title + "</a>";
+            var parts = [createLink({
+              url: row.url,
+              text: row.title
+            })];
+            if (row.imported_event_data) {
+              var eventId = _.last(row.global_id.split('/'));
+              parts.push(ImportedEventPopover.createPopoverTrigger(eventId));
+            }
+            return parts.join(' ');
           } else {
             return row.title;
           }

@@ -1,0 +1,13 @@
+<h1>Welcome to your community!</h1>
+
+<p>We created Bridge Troll to help communities grow closer together, but we wanted more. We believe communication is the key to happy community. In that spirit, we're excited to announce our new chat section to keep bringing communities together! Choose your region below: </p>
+
+<hr />
+
+<div id="city-selector">
+    <ul>
+        <% @chats.each do |city| %>
+            <li><a href="/chats/<%= city.id %>"><%= city.name %></a> <span class="message-count">(<%= city.messages.count %> Messages)</span></li>
+        <% end %>
+    </ul>
+</div>

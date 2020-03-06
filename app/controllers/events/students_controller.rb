@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'csv'
 
 module Events
@@ -18,19 +20,26 @@ module Events
     private
 
     def find_event
-      @event = Event.find_by_id(params[:event_id])
+      @event = Event.find_by(id: params[:event_id])
     end
 
     def student_csv_data(rsvps)
       CSV.generate do |csv|
         csv << [
-          'Student Name', 'Class Level', 'Operating System', 'Occupation', 'Gender'
+          'Student Name',
+          'Class Level',
+          'Operating System',
+          'Occupation',
+          'Gender'
         ]
 
         rsvps.each do |rsvp|
           csv << [
-            rsvp.user.full_name, rsvp.class_level, rsvp.operating_system.name,
-            rsvp.job_details, rsvp.user.gender
+            rsvp.user.full_name,
+            rsvp.class_level,
+            rsvp.operating_system.name,
+            rsvp.job_details,
+            rsvp.user.gender
           ]
         end
       end

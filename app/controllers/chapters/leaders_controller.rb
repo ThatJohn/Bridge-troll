@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Chapters
   class LeadersController < ApplicationController
     before_action :authenticate_user!
@@ -10,11 +12,11 @@ module Chapters
 
     def create
       authorize @chapter, :modify_leadership?
-      leader = ChapterLeadership.new(chapter: @chapter, user_id: leader_params[:id])
+      leader = ChapterLeadership.new(chapter: @chapter, user_id: leader_id_param)
       if leader.save
-        redirect_to chapter_leaders_path(@chapter), notice: "Booyah!"
+        redirect_to chapter_leaders_path(@chapter), notice: 'Booyah!'
       else
-        redirect_to chapter_leaders_path(@chapter), error: "Whoops."
+        redirect_to chapter_leaders_path(@chapter), error: 'Whoops.'
       end
     end
 
@@ -22,7 +24,7 @@ module Chapters
       authorize @chapter, :modify_leadership?
       leadership = ChapterLeadership.where(
         chapter: @chapter,
-        user_id: leader_params[:id]
+        user_id: params[:id]
       ).first
 
       leadership.destroy
@@ -34,12 +36,12 @@ module Chapters
       respond_to do |format|
         format.json do
           users_not_assigned = User.where(<<-SQL, @chapter.id)
-            id NOT IN (
+            users.id NOT IN (
               SELECT user_id FROM chapter_leaderships WHERE chapter_id = ?
             )
           SQL
 
-          render json: UserSearcher.new(users_not_assigned, params[:q])
+          render json: UserSearcher.new(users_not_assigned, search_query)
         end
       end
     end
@@ -47,11 +49,19 @@ module Chapters
     private
 
     def load_chapter
-      @chapter = Chapter.find(params[:chapter_id])
+      @chapter = Chapter.find(chapter_id_param)
     end
 
-    def leader_params
-      params.permit(:id, :chapter_id)
+    def chapter_id_param
+      params.require(:chapter_id)
+    end
+
+    def leader_id_param
+      params.require(:chapter_leader).require(:id)
+    end
+
+    def search_query
+      params.require(:q)
     end
   end
 end

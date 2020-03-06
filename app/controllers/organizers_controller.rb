@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class OrganizersController < ApplicationController
   before_action :authenticate_user!
   before_action :validate_published!
@@ -34,9 +36,7 @@ class OrganizersController < ApplicationController
 
   def destroy
     authorize @event, :edit?
-    if @event.organizers.count == 1
-      return redirect_to event_organizers_path(@event), alert: "Can't remove the sole organizer!"
-    end
+    return redirect_to event_organizers_path(@event), alert: "Can't remove the sole organizer!" if @event.organizers.count == 1
 
     rsvp = @event.rsvps.find(params[:id])
 
@@ -57,9 +57,9 @@ class OrganizersController < ApplicationController
 
   def validate_published!
     @event ||= Event.find(params[:event_id])
-    unless @event.published?
-      flash[:error] = "This feature is not available for unpublished events"
-      redirect_to @event
-    end
+    return if @event.published?
+
+    flash[:error] = 'This feature is not available for unpublished events'
+    redirect_to @event
   end
 end

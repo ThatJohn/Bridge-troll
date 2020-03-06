@@ -1,22 +1,11 @@
+# frozen_string_literal: true
+
 class AdminPagesController < ApplicationController
   before_action :authenticate_user!
 
   def admin_dashboard
     authorize Event, :admin?
-    @admins = User.where(admin: true)
-    @publishers = User.where(publisher: true)
-
-    @user_authentication_counts = Hash.new(0)
-    User.find_each do |user|
-      @user_authentication_counts[user.authentications_count] += 1
-    end
-
-    @authentication_counts = Authentication.all.each_with_object(Hash.new(0)) do |auth, hsh|
-      hsh[auth.provider] += 1
-    end
-
-    @spammers = User.where(spammer: true)
-    @spam_events = Event.where(spam: true)
+    @data = AdminDashboardData.new
   end
 
   def send_test_email
@@ -30,5 +19,52 @@ class AdminPagesController < ApplicationController
   def raise_exception
     authorize Event, :admin?
     raise 'This error was intentionally raised to check error handling.'
+  end
+
+  class AdminDashboardData
+    def admins
+      @admins ||= User.where(admin: true)
+    end
+
+    def publishers
+      @publishers ||= User.where(publisher: true)
+    end
+
+    def external_event_editors
+      @external_event_editors ||= User.where(external_event_editor: true)
+    end
+
+    def user_authentication_counts
+      @user_authentication_counts ||= User
+                                      .select('authentications_count, count(*) count')
+                                      .group(:authentications_count)
+                                      .order(Arel.sql('count(*)'))
+    end
+
+    def authentication_counts
+      @authentication_counts ||= Authentication
+                                 .select('provider, count(*) count')
+                                 .group(:provider)
+                                 .order(Arel.sql('count(*)'))
+    end
+
+    def region_user_counts
+      regions_users_count = <<~SQL
+        SELECT COUNT(*)
+        FROM regions_users
+        WHERE region_id = regions.id
+      SQL
+      @region_user_counts ||= Region
+                              .select("name, (#{regions_users_count}) as count")
+                              .order('count')
+    end
+
+    def spammers
+      @spammers ||= User.where(spammer: true)
+    end
+
+    def spam_events
+      @spam_events ||= Event.where(spam: true)
+    end
   end
 end

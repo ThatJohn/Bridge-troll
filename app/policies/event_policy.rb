@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class EventPolicy < ApplicationPolicy
   class Scope < Scope
     def publishable
@@ -15,7 +17,8 @@ class EventPolicy < ApplicationPolicy
 
   def update?
     return false if record.historical?
-    user.admin? || record.organizer?(user) || record.chapter.has_leader?(user) || record.organization.has_leader?(user)
+
+    user.admin? || record.organizer?(user) || record.chapter.leader?(user) || record.organization.leader?(user)
   end
 
   def edit?
@@ -27,7 +30,7 @@ class EventPolicy < ApplicationPolicy
   end
 
   def checkin?
-    record.checkiner?(user) || record.chapter.has_leader?(user)
+    record.checkiner?(user) || record.chapter.leader?(user)
   end
 
   def see_unpublished?
@@ -35,14 +38,43 @@ class EventPolicy < ApplicationPolicy
   end
 
   def publish?
-    user.publisher? || user.admin? || record.chapter.has_leader?(user) || record.chapter.organization.has_leader?(user)
+    user.publisher? || user.admin? || record.chapter.leader?(user) || record.chapter.organization.leader?(user)
   end
 
   def flag?
     user.publisher? || user.admin?
   end
 
-  def admin?
-    user.admin?
+  delegate :admin?, to: :user
+
+  def permitted_attributes
+    [
+      :title,
+      :target_audience,
+      :location_id,
+      :chapter_id,
+      :details,
+      :time_zone,
+      :volunteer_details,
+      :public_email,
+      :food_provided,
+      :starts_at,
+      :ends_at,
+      :student_rsvp_limit,
+      :volunteer_rsvp_limit,
+      :course_id,
+      :allow_student_rsvp,
+      :student_details,
+      :plus_one_host_toggle,
+      :email_on_approval,
+      :has_childcare,
+      :restrict_operating_systems,
+      :survey_greeting,
+      :custom_question,
+      {
+        event_sessions_attributes: EventSessionPolicy.new(user, EventSession).permitted_attributes + [:id],
+        allowed_operating_system_ids: []
+      }
+    ]
   end
 end

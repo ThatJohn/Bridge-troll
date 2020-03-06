@@ -1,0 +1,12 @@
+<h1>Welcome to your community!</h1>
+
+<hr />
+
+<div id="messages">
+    <%= render @messages %>
+</div>
+<hr>
+<div id="input-box">
+    <input type="hidden" value="<%= params[:id] %>" id="region">
+    <input type="text" class="input-box_text" id="message_input"/>
+</div>

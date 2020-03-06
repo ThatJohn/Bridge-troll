@@ -1,6 +1,26 @@
+# HOUSTON, WE MADE IT!
+
+![](https://i.imgur.com/mCiQAdb.gif)
+
+-----
+## Some caveats, though:
+
+* The original codebase was extremely old and my box refused to run it no matter what, so after 5 hours of fruitless troubleshooting, I decided to download a more recent one from [the original project repo](https://github.com/railsbridge/bridge_troll) and used it as the base for this excercise. This decision responds strictly to the time limitation. I would totally do it on the older codebase in a real environment.
+* The original excercise had only one objective that was geared more towards a different role. Devops, perhaps. I asked around to confirm if this was correct, but I didn't get an answer in time, so instead of waiting, and true to the spirit of GitHub, I decided to take the iniciative and take ownership of my challenge. I want to do more user-centric stuff, so I added a chat feature. It was a bit harder than I expected, there are a couple of nasty bugs and parts of the code are not my brightest work, but it all works beautifully!
+* Of course, I understand if going out of script is a no-no, so it's a given that I'm more than willing to give it another shot with the requirements of your liking if you don't feel like accepting this submission as a valid response to the challenge.
+* As always, all my love to you guys and gals!
+
+Here's a quick video preview of the project in action:
+
+
+[![screenshot](screenshot.jpg)](https://www.youtube.com/watch?v=zzduQBckTxE&)
+
+-----
+
 # Bridge Troll
  
 [![Build Status](https://travis-ci.org/railsbridge/bridge_troll.svg?branch=master)](http://travis-ci.org/railsbridge/bridge_troll)
+[![codecov](https://codecov.io/gh/railsbridge/bridge_troll/branch/master/graph/badge.svg)](https://codecov.io/gh/railsbridge/bridge_troll)
 
 Bridge Troll is a Rails app that helps workshop organizers plan their events.
 
@@ -17,9 +37,11 @@ New? Keep reading this, and then read the [contributor guidelines](CONTRIBUTING.
 * The staging server lives at [bridgetroll-staging.herokuapp.com](http://bridgetroll-staging.herokuapp.com/)
 * The continuous integration server is at [travis-ci.org/railsbridge/bridge_troll](http://travis-ci.org/railsbridge/bridge_troll)
 
+For details on how production and staging are setup, see the [deployment docs](doc/deploy.md).
+
 ### Features & Bugs
 * We use [GitHub Issues](https://github.com/railsbridge/bridge_troll/issues?state=open) for tracking bugs and features.
- * Issues marked as [Ready for Action](https://github.com/railsbridge/bridge_troll/labels/Ready%20for%20Action) are ready to go, so pick one up!
+ * Issues marked as [Help Wanted](https://github.com/railsbridge/bridge_troll/issues?q=is%3Aissue+is%3Aopen+label%3A%22Help+Wanted%22) are ready to go, so pick one up!
  * Bugs are, naturally, [marked as bugs](https://github.com/railsbridge/bridge_troll/labels/bug).
  * Issues marked with the [Discussion label](https://github.com/railsbridge/bridge_troll/labels/Discussion) are currently being refined. If you're interested in working on one, comment and ask what needs to be finalized before it's ready to be worked on.
  * We also mark issues as [beginner friendly](https://github.com/railsbridge/bridge_troll/labels/Beginner%20Friendly), so if you're new to Rails, check those out.
@@ -44,7 +66,7 @@ git clone https://github.com/username/bridge_troll.git
 cd bridge_troll
 ```
 
-Make sure you have the correct version of ruby before installing the gems for this repo. If you are using rvm, run: `rvm install 2.3.1`. For rbenv, run: `rbenv install 2.3.1`.
+Make sure you have the correct version of ruby before installing the gems for this repo. If you are using rvm, run: `rvm install 2.6.5`. For rbenv, run: `rbenv install 2.6.5`.
 
 Finish setting up your environment
 ```
@@ -56,25 +78,15 @@ To verify your environment is set up correctly, run the server
 rails s
 ```
 
-Go to http://localhost:3000/ and verify your success! You can play with the app locally to become more familiar with it. (Pro-tip: to create a valid user without setting up email, run User.last.confirm! in the Rails console after signing up.)
+Go to http://localhost:3000/ and verify your success! You can play with the app locally to become more familiar with it.
+
+Pro-tip: Confirming Users Locally
+* outgoing emails are logged, so if you scroll back in your terminal window, you can see the contents of the confirmation email and copy/paste the confirmation link into your browser
+* or create a valid user for most recent signup, run `rails console`: `User.last.confirm!`
 
 ### Running tests
 
-This project has many tests that you should run before submitting a pull request, even if it's just a simple text change. You will need to install PhantomJS to run the tests. On OSX with Homebrew, try
-```
-brew update
-brew install phantomjs
-```
-
-If you are on a Ubuntu-based linux distribution, you can try
-```
-sudo apt-get install phantomjs
-```
-
-Then you can run tests by doing
-```
-bundle exec rake
-```
+This project has many tests that you should run before submitting a pull request, even if it's just a simple text change. You will need to [install yarn](https://yarnpkg.com/lang/en/docs/install) to run the tests.
 
 ### Seed Data
 
@@ -82,7 +94,7 @@ Seed data refers to the initial data provided with the site for training, testin
 
 `rake db:seed` will create a sample event (called 'Seeded Test Event'), organized by a sample user, with many more sample user volunteers and students.
 
-All the created users have easyish-to-remember logins, so a great way to test out organizer functionality is to load the seeds and log in as `organizer@example.com` with the password `password`.
+All the created users have easyish-to-remember logins, so a great way to test out organizer functionality is to load the seeds and log in as `organizer@example.com` with the password `password` (it will always be 'password').
 
 Doing `rake db:seed` again will destroy all those sample persons and create the event again. The exact details of what is created can be found in `seed_event.rb`.
 
@@ -103,7 +115,7 @@ We have created a living style guide to keep track of HTML components and their 
 
 We're still working on adding every element to the page, so if you see missing components, add it to the erb template ([style_guide.html.erb](app/views/static_pages/style_guide.html.erb))
 
-##Additional Services
+## Additional Services
 
 The following setup is only required if you are developing for these specific features.
 
@@ -129,7 +141,7 @@ You can see rendered versions of all emails the application can send at http://l
 
 If you are just getting started, skip these steps for now.
 
-When developing the parts of Bridge Troll that communicate with external services such as meetup and authentication, you will need to use API keys, which are most easily managed with environment variables. Environment variables control various aspects of how your code runs. 
+When developing the parts of Bridge Troll that communicate with external services such as meetup and authentication, you will need to use API keys, which are most easily managed with environment variables. Environment variables control various aspects of how your code runs.
 
 To set up environment variables for the Rails server, you'll need to create an `.env` file in the Bridge Troll directory. Here's a sample one (note these are not real API keys):
 

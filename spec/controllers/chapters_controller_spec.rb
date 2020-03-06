@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe ChaptersController do
@@ -19,18 +21,15 @@ describe ChaptersController do
 
   describe '#show' do
     let!(:chapter) { create(:chapter) }
-    before do
-      @draft_event = create(:event, current_state: :draft, chapter: chapter)
-      @pending_event = create(:event, current_state: :pending_approval, chapter: chapter)
-      @published_event = create(:event, chapter: chapter)
-
-      expect(chapter.events).to match_array([@draft_event, @pending_event, @published_event])
-    end
+    let!(:draft_event) { create(:event, current_state: :draft, chapter: chapter) }
+    let!(:pending_event) { create(:event, current_state: :pending_approval, chapter: chapter) }
+    let!(:published_event) { create(:event, chapter: chapter) }
 
     describe 'as an admin' do
       it 'shows all events' do
-        get :show, id: chapter.id
-        expect(assigns(:chapter_events)).to match_array([@draft_event, @pending_event, @published_event])
+        expect(chapter.events).to match_array([draft_event, pending_event, published_event])
+        get :show, params: { id: chapter.id }
+        expect(assigns(:chapter_events)).to match_array([draft_event, pending_event, published_event])
       end
     end
 
@@ -38,8 +37,8 @@ describe ChaptersController do
       let(:user) { create(:user) }
 
       it 'shows a list of published events' do
-        get :show, id: chapter.id
-        expect(assigns(:chapter_events)).to match_array([@published_event])
+        get :show, params: { id: chapter.id }
+        expect(assigns(:chapter_events)).to match_array([published_event])
       end
     end
   end
@@ -47,52 +46,52 @@ describe ChaptersController do
   describe '#new' do
     it 'shows an empty chapter' do
       get :new
-      expect(response).to be_success
+      expect(response).to be_successful
     end
   end
 
   describe '#create' do
     it 'creates a new chapter' do
-      expect {
-        post :create, chapter: {name: "Fabulous Chapter", organization_id: organization.id}
-      }.to change(Chapter, :count).by(1)
+      expect do
+        post :create, params: { chapter: { name: 'Fabulous Chapter', organization_id: organization.id } }
+      end.to change(Chapter, :count).by(1)
     end
   end
 
   describe '#edit' do
     let!(:chapter) { create(:chapter) }
 
-    it "shows a chapter edit form" do
-      get :edit, id: chapter.id
-      expect(response).to be_success
+    it 'shows a chapter edit form' do
+      get :edit, params: { id: chapter.id }
+      expect(response).to be_successful
     end
   end
 
   describe '#update' do
     let!(:chapter) { create(:chapter) }
 
-    it "changes chapter details" do
-      expect {
-        put :update, id: chapter.id, chapter: {name: 'Sandwich Chapter'}
-      }.to change { chapter.reload.name }
+    it 'changes chapter details' do
+      expect do
+        put :update, params: { id: chapter.id, chapter: { name: 'Sandwich Chapter' } }
+      end.to(change { chapter.reload.name })
       expect(response).to redirect_to(chapter_path(chapter))
     end
   end
 
-  describe "#destroy" do
+  describe '#destroy' do
     let!(:chapter) { create(:chapter) }
 
-    it "can delete a chapter that belongs to no events" do
-      expect {
-        delete :destroy, {id: chapter.id}
-      }.to change(Chapter, :count).by(-1)
+    it 'can delete a chapter that belongs to no events' do
+      expect do
+        delete :destroy, params: { id: chapter.id }
+      end.to change(Chapter, :count).by(-1)
     end
 
-    it "cannot delete a chapter that belongs to a event" do
+    it 'cannot delete a chapter that belongs to a event' do
       create(:event, chapter: chapter)
-      expect {
-        delete :destroy, {id: chapter.id}
-      }.not_to change(Chapter, :count)
+      expect do
+        delete :destroy, params: { id: chapter.id }
+      end.not_to change(Chapter, :count)
     end
   end
 end

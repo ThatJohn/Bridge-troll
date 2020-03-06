@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 class RsvpsController < ApplicationController
-  before_action :authenticate_user!, except: [:quick_destroy_confirm, :destroy]
+  before_action :authenticate_user!, except: %i[quick_destroy_confirm destroy]
   before_action :assign_event
-  before_action :load_rsvp, only: [:edit, :update]
-  before_action :redirect_if_rsvp_exists, only: [:volunteer, :learn]
+  before_action :load_rsvp, only: %i[edit update]
+  before_action :redirect_if_rsvp_exists, only: %i[volunteer learn]
   before_action :redirect_if_event_in_past
-  before_action :redirect_if_event_closed, only: [:volunteer, :learn, :create]
+  before_action :redirect_if_event_closed, only: %i[volunteer learn create]
   before_action :skip_authorization
 
   def volunteer
@@ -25,18 +27,12 @@ class RsvpsController < ApplicationController
     @rsvp = Rsvp.new(rsvp_params)
     @rsvp.event = @event
     @rsvp.user = current_user
-    if Role.attendee_role_ids.include?(params[:rsvp][:role_id].to_i)
-      @rsvp.role = Role.find(params[:rsvp][:role_id])
-    end
+    @rsvp.role = Role.find(params[:rsvp][:role_id]) if Role.attendee_role_ids.include?(params[:rsvp][:role_id].to_i)
 
     Rsvp.transaction do
-      if @event.students_at_limit? && @rsvp.role_student?
-        @rsvp.waitlist_position = (@event.student_waitlist_rsvps.maximum(:waitlist_position) || 0) + 1
-      end
+      @rsvp.waitlist_position = (@event.student_waitlist_rsvps.maximum(:waitlist_position) || 0) + 1 if @event.students_at_limit? && @rsvp.role_student?
 
-      if @event.volunteers_at_limit? && @rsvp.role_volunteer?
-        @rsvp.waitlist_position = (@event.volunteer_waitlist_rsvps.maximum(:waitlist_position) || 0 ) + 1
-      end
+      @rsvp.waitlist_position = (@event.volunteer_waitlist_rsvps.maximum(:waitlist_position) || 0) + 1 if @event.volunteers_at_limit? && @rsvp.role_volunteer?
 
       if @rsvp.save
         apply_other_changes_from_params
@@ -62,7 +58,7 @@ class RsvpsController < ApplicationController
   end
 
   def update
-    if @rsvp.update_attributes(rsvp_params)
+    if @rsvp.update(rsvp_params)
       apply_other_changes_from_params
 
       redirect_to @event
@@ -73,9 +69,7 @@ class RsvpsController < ApplicationController
 
   def quick_destroy_confirm
     @rsvp = Rsvp.find_by(token: params[:token]) if params[:token].present?
-    unless @rsvp
-      redirect_to event_path(@event), notice: 'Unable to find RSVP!'
-    end
+    redirect_to event_path(@event), notice: 'Unable to find RSVP!' unless @rsvp
   end
 
   def destroy
@@ -101,45 +95,40 @@ class RsvpsController < ApplicationController
   protected
 
   def redirect_if_event_closed
-    unless @event.open?
-      flash[:error] = "Sorry. This event is closed!"
-      redirect_to @event
-    end
+    return if @event.open?
+
+    flash[:error] = 'Sorry. This event is closed!'
+    redirect_to @event
   end
 
   def apply_other_changes_from_params
-    @rsvp.user.update_attributes(gender: params[:user][:gender])
+    @rsvp.user.update(gender: params[:user][:gender])
+    return unless @event.location
 
-    if @event.location
-      if params[:affiliate_with_region]
-        @rsvp.user.region_ids += [@event.region.id]
-      else
-        @rsvp.user.region_ids -= [@event.region.id]
-      end
+    if params[:affiliate_with_region]
+      @rsvp.user.region_ids += [@event.region.id] unless @rsvp.user.region_ids.include? @event.region.id
+    else
+      @rsvp.user.region_ids -= [@event.region.id]
     end
   end
 
   def rsvp_params
     role_id = params[:rsvp][:role_id].to_i
-    params.require(:rsvp).permit(Rsvp::PERMITTED_ATTRIBUTES + [
-      event_session_ids: [], dietary_restriction_diets: []
-    ]).tap do |params|
+    permitted_attributes(Rsvp).tap do |params|
       if role_id == Role::STUDENT.id
         user_choices = Array(params[:event_session_ids]).select(&:present?).map(&:to_i)
         required_sessions = @event.event_sessions.where(required_for_students: true).pluck(:id)
         params[:event_session_ids] = user_choices | required_sessions
       end
-      if @event.event_sessions.length == 1
-        params[:event_session_ids] = [@event.event_sessions.first.id]
-      end
+      params[:event_session_ids] = [@event.event_sessions.first.id] if @event.event_sessions.length == 1
     end
   end
 
   def load_rsvp
-    @rsvp = Rsvp.find_by_id(params[:id])
-    unless @rsvp && ((@rsvp.user == current_user) || (@rsvp.event.organizer?(current_user)))
-      redirect_to events_path, notice: 'You are not signed up for this event'
-    end
+    @rsvp = Rsvp.find_by(id: params[:id])
+    return if @rsvp && ((@rsvp.user == current_user) || @rsvp.event.organizer?(current_user))
+
+    redirect_to events_path, notice: 'You are not signed up for this event'
   end
 
   def redirect_if_rsvp_exists
@@ -151,18 +140,18 @@ class RsvpsController < ApplicationController
   end
 
   def assign_event
-    @event = Event.find_by_id(params[:event_id])
-    if @event.nil?
-      redirect_to events_path, notice: 'You are not signed up for this event'
-    end
+    @event = Event.find_by(id: params[:event_id])
+    return unless @event.nil?
+
+    redirect_to events_path, notice: 'You are not signed up for this event'
   end
 
   def signup_for_new_region?
     regions = Region.joins(locations: :events).where('events.id IN (?)', current_user.events.pluck(:id)).distinct
-    if regions.length > 0
-      !regions.include?(@event.region)
-    else
+    if regions.empty?
       false
+    else
+      !regions.include?(@event.region)
     end
   end
 end

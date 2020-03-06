@@ -1,11 +1,7 @@
-class MeetupUserProfile
-  def method_missing(*args, &block)
-    false
-  end
-end
+# frozen_string_literal: true
 
-class MeetupUser < ActiveRecord::Base
-  has_many :rsvps, -> { where user_type: 'MeetupUser' }, foreign_key: 'user_id'
+class MeetupUser < ApplicationRecord
+  has_many :rsvps, -> { where user_type: 'MeetupUser' }, foreign_key: 'user_id', inverse_of: :meetup_user
   has_many :events, through: :rsvps
 
   def email
@@ -13,7 +9,10 @@ class MeetupUser < ActiveRecord::Base
   end
 
   def profile
-    MeetupUserProfile.new
+    @profile ||= Profile.new.tap do |p|
+      Profile.attribute_names.each { |attrib| p[attrib] = false }
+      p.readonly!
+    end
   end
 
   def profile_path

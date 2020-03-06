@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module OmniauthProviders
   def self.provider_data
     [
@@ -25,7 +27,7 @@ module OmniauthProviders
         key: :google_oauth2,
         name: 'Google',
         icon: 'fa-google'
-      },
+      }
     ]
   end
 
@@ -34,9 +36,9 @@ module OmniauthProviders
   end
 
   def self.finish_auth_for(authentication)
-    if authentication.provider == 'meetup'
-      MeetupImporter.new.associate_user(authentication.user, authentication.uid)
-    end
+    return unless authentication.provider == 'meetup'
+
+    MeetupImporter.new.associate_user(authentication.user, authentication.uid)
   end
 
   def self.provider_data_for(provider)
@@ -46,22 +48,20 @@ module OmniauthProviders
   def self.user_attributes_from_omniauth(omniauth)
     attribute_generator = OmniauthAttributeGenerator.new(omniauth)
     case omniauth['provider']
-      when 'facebook'
-        attribute_generator.facebook
-      when 'twitter'
-        attribute_generator.twitter
-      when 'github'
-        attribute_generator.github
-      when 'meetup'
-        attribute_generator.meetup
-      when 'google_oauth2'
-        attribute_generator.google_oauth2
-      else
-        raise 'Unknown Provider'
+    when 'facebook'
+      attribute_generator.facebook
+    when 'twitter'
+      attribute_generator.twitter
+    when 'github'
+      attribute_generator.github
+    when 'meetup'
+      attribute_generator.meetup
+    when 'google_oauth2'
+      attribute_generator.google_oauth2
+    else
+      raise 'Unknown Provider'
     end
   end
-
-  private
 
   class OmniauthAttributeGenerator
     attr_reader :omniauth

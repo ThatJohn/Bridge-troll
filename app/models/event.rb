@@ -1,33 +1,29 @@
-class Event < ActiveRecord::Base
-  PERMITTED_ATTRIBUTES = [:title, :target_audience, :location_id, :chapter_id, :details, :time_zone, :volunteer_details, :public_email, :starts_at, :ends_at, :student_rsvp_limit, :volunteer_rsvp_limit, :course_id, :allow_student_rsvp, :student_details, :plus_one_host_toggle, :email_on_approval, :has_childcare, :restrict_operating_systems,
-  :survey_greeting]
+# frozen_string_literal: true
+
+class Event < ApplicationRecord
   DEFAULT_CODE_OF_CONDUCT_URL = 'http://bridgefoundry.org/code-of-conduct/'
 
   serialize :allowed_operating_system_ids, JSON
-  serialize :external_event_data, JSON
-  enum current_state: [ :draft, :pending_approval, :published ]
-  validates :current_state, inclusion: { in: Event.current_states.keys }
+  serialize :imported_event_data, JSON
+  enum current_state: { draft: 0, pending_approval: 1, published: 2 }
 
   after_initialize :set_defaults
   before_validation :normalize_allowed_operating_system_ids
   after_save do |event|
-    if student_rsvp_limit_changed? || volunteer_rsvp_limit_changed?
-      WaitlistManager.new(event).reorder_waitlist!
-    end
+    WaitlistManager.new(event).reorder_waitlist! if saved_change_to_attribute?(:student_rsvp_limit) || saved_change_to_attribute?(:volunteer_rsvp_limit)
   end
 
   after_create :update_location_counts
   after_save do
-    update_location_counts if location_id_changed?
+    update_location_counts if saved_change_to_attribute?(:location_id)
   end
   after_destroy :update_location_counts
 
-  belongs_to :location
+  belongs_to :location, optional: true
   belongs_to :chapter, counter_cache: true
   has_one :organization, through: :chapter
 
-  extend ActiveHash::Associations::ActiveRecordExtensions
-  belongs_to_active_hash :course
+  belongs_to :course, optional: true
 
   has_one :region, through: :location
 
@@ -35,42 +31,71 @@ class Event < ActiveRecord::Base
   has_many :sections, dependent: :destroy
   has_many :event_emails, dependent: :destroy
 
-  has_many :attendee_rsvps, -> { where(role_id: Role.attendee_role_ids, waitlist_position: nil) }, class_name: 'Rsvp', inverse_of: :event
+  with_options(class_name: 'Rsvp', inverse_of: :event) do
+    has_many :attendee_rsvps, lambda {
+      where(role_id: Role.attendee_role_ids, waitlist_position: nil)
+    }
+    has_many :student_rsvps, lambda {
+      where(role_id: Role::STUDENT.id, waitlist_position: nil)
+    }
+    has_many :volunteer_rsvps, lambda {
+      where(role_id: Role::VOLUNTEER.id, waitlist_position: nil)
+    }
+    has_many :student_waitlist_rsvps, lambda {
+      where(role_id: Role::STUDENT.id).where.not(waitlist_position: nil).order(:waitlist_position)
+    }
+    has_many :volunteer_waitlist_rsvps, lambda {
+      where(role_id: Role::VOLUNTEER.id).where.not(waitlist_position: nil).order(:waitlist_position)
+    }
+    has_many :organizer_rsvps, lambda {
+      where(role_id: Role::ORGANIZER.id)
+    }
+  end
 
-  has_many :student_rsvps, -> { where(role_id: Role::STUDENT.id, waitlist_position: nil) }, class_name: 'Rsvp', inverse_of: :event
-  has_many :student_waitlist_rsvps, -> { where("role_id = #{Role::STUDENT.id} AND waitlist_position IS NOT NULL").order(:waitlist_position) }, class_name: 'Rsvp', inverse_of: :event
-  has_many :students, through: :student_rsvps, source: :user, source_type: 'User'
-  has_many :legacy_students, through: :student_rsvps, source: :user, source_type: 'MeetupUser'
+  with_options(source: :user, source_type: 'User') do
+    has_many :students, through: :student_rsvps
+    has_many :volunteers, through: :volunteer_rsvps
+    has_many :organizers, through: :organizer_rsvps
+  end
 
-  has_many :volunteer_rsvps, -> { where(role_id: Role::VOLUNTEER.id, waitlist_position: nil) }, class_name: 'Rsvp', inverse_of: :event
-  has_many :volunteer_waitlist_rsvps, -> { where("role_id = #{Role::VOLUNTEER.id} AND waitlist_position IS NOT NULL").order(:waitlist_position) }, class_name: 'Rsvp', inverse_of: :event
-  has_many :volunteers, through: :volunteer_rsvps, source: :user, source_type: 'User'
-  has_many :legacy_volunteers, through: :volunteer_rsvps, source: :user, source_type: 'MeetupUser'
-
-  has_many :organizer_rsvps, -> { where(role_id: Role::ORGANIZER.id) }, class_name: 'Rsvp', inverse_of: :event
-  has_many :organizers, through: :organizer_rsvps, source: :user, source_type: 'User'
-  has_many :legacy_organizers, through: :organizer_rsvps, source: :user, source_type: 'MeetupUser'
+  with_options(source: :user, source_type: 'MeetupUser') do
+    has_many :legacy_students, through: :student_rsvps
+    has_many :legacy_volunteers, through: :volunteer_rsvps
+    has_many :legacy_organizers, through: :organizer_rsvps
+  end
 
   has_many :event_sessions, -> { order('ends_at ASC') }, dependent: :destroy, inverse_of: :event
   accepts_nested_attributes_for :event_sessions, allow_destroy: true
+
+  with_options(through: :rsvps, source: :survey) do
+    has_many :surveys
+    has_many :student_surveys, -> { where('rsvps.role_id = ?', Role::STUDENT.id) }
+    has_many :volunteer_surveys, -> { where('rsvps.role_id = ?', Role::VOLUNTEER.id) }
+  end
+
+  validates :title, presence: true
+  validates :food_provided, inclusion: { in: [true, false] }
+  validates :time_zone, inclusion: { in: ActiveSupport::TimeZone.all.map(&:name), allow_blank: true }, presence: true
+  validates :current_state, inclusion: { in: Event.current_states.keys }
   validates :event_sessions, length: { minimum: 1 }
 
-  validates_presence_of :title
-  validates_presence_of :time_zone
-  validates_presence_of :chapter
-  validates_inclusion_of :time_zone, in: ActiveSupport::TimeZone.all.map(&:name), allow_blank: true
-  validates :allowed_operating_system_ids, array_of_ids: OperatingSystem.all.map(&:id), if: :restrict_operating_systems?
-  validates_presence_of :target_audience, unless: :historical?, if: [:allow_student_rsvp?, :target_audience_required?]
+  with_options(if: :restrict_operating_systems?) do
+    validates :allowed_operating_system_ids, array_of_ids: OperatingSystem.all.map(&:id)
+  end
 
-  with_options(unless: :historical?) do |normal_event|
-    normal_event.with_options(if: :allow_student_rsvp?) do |workshop_event|
-      workshop_event.validates_numericality_of :student_rsvp_limit, greater_than: 0
-      workshop_event.validate :validate_student_rsvp_limit
+  with_options(unless: :historical?) do
+    with_options(if: :allow_student_rsvp?) do
+      validates :student_rsvp_limit, numericality: { greater_than: 0 }
+      validate :validate_student_rsvp_limit
     end
 
-    with_options(if: :has_volunteer_limit?) do |workshop_event|
-      workshop_event.validates_numericality_of :volunteer_rsvp_limit, greater_than: 0
-      workshop_event.validate :validate_volunteer_rsvp_limit
+    with_options(if: %i[allow_student_rsvp? target_audience_required?]) do
+      validates :target_audience, presence: true
+    end
+
+    with_options(if: :volunteer_limit?) do
+      validates :volunteer_rsvp_limit, numericality: { greater_than: 0 }
+      validate :validate_volunteer_rsvp_limit
     end
   end
 
@@ -90,7 +115,7 @@ class Event < ActiveRecord::Base
     @all_locations ||= ([location] + event_sessions.map(&:location)).compact
   end
 
-  def has_multiple_locations?
+  def multiple_locations?
     all_locations.length > 1
   end
 
@@ -98,12 +123,12 @@ class Event < ActiveRecord::Base
     rsvps.confirmed.needs_childcare
   end
 
-  def has_volunteer_limit?
+  def volunteer_limit?
     volunteer_rsvp_limit != nil
   end
 
   def historical?
-    !!external_event_data
+    !!imported_event_data
   end
 
   def close_rsvps
@@ -121,15 +146,11 @@ class Event < ActiveRecord::Base
   end
 
   def students_at_limit?
-    if student_rsvp_limit
-      student_rsvps_count >= student_rsvp_limit
-    end
+    student_rsvps_count >= student_rsvp_limit if student_rsvp_limit
   end
 
   def volunteers_at_limit?
-    if volunteer_rsvp_limit
-      volunteer_rsvps_count >= volunteer_rsvp_limit
-    end
+    volunteer_rsvps_count >= volunteer_rsvp_limit if volunteer_rsvp_limit
   end
 
   def survey_sent?
@@ -142,27 +163,25 @@ class Event < ActiveRecord::Base
 
   def validate_student_rsvp_limit
     return unless persisted? && student_rsvp_limit
+    return unless student_rsvp_limit < student_rsvps_count
 
-    if student_rsvp_limit < student_rsvps_count
-      errors.add(:student_rsvp_limit, "can't be decreased lower than the number of existing RSVPs (#{student_rsvps.length})")
-      false
-    end
+    errors.add(:student_rsvp_limit, "can't be decreased lower than the number of existing RSVPs (#{student_rsvps.length})")
+    false
   end
 
   def validate_volunteer_rsvp_limit
     return unless persisted? && volunteer_rsvp_limit
+    return unless volunteer_rsvp_limit < volunteer_rsvps_count
 
-    if volunteer_rsvp_limit < volunteer_rsvps_count
-      errors.add(:volunteer_rsvp_limit, "can't be decreased lower than the number of existing RSVPs (#{volunteer_rsvps.length})")
-      false
-    end
+    errors.add(:volunteer_rsvp_limit, "can't be decreased lower than the number of existing RSVPs (#{volunteer_rsvps.length})")
+    false
   end
 
   def checked_in_rsvps(role)
     if upcoming? || historical?
       association_for_role(role)
     else
-      association_for_role(role).where("checkins_count > 0")
+      association_for_role(role).where('checkins_count > 0')
     end
   end
 
@@ -192,8 +211,8 @@ class Event < ActiveRecord::Base
 
   def rsvps_with_checkins
     attendee_rsvps = rsvps
-                       .where('waitlist_position IS NULL OR checkins_count > 0')
-                       .includes(:user, :rsvp_sessions)
+                     .where('waitlist_position IS NULL OR checkins_count > 0')
+                     .includes(:user, :rsvp_sessions)
     attendee_rsvps.map do |rsvp|
       rsvp.as_json(methods: [:checked_in_session_ids])
     end
@@ -213,7 +232,7 @@ class Event < ActiveRecord::Base
     else
       includes(:rsvps).where(
         '(rsvps.role_id = ? AND rsvps.user_id = ?) OR (current_state = ?) OR (chapter_id IN (?))',
-        Role::ORGANIZER,
+        Role::ORGANIZER.id,
         user.id,
         Event.current_states[:published],
         user.chapter_leaderships.pluck(:chapter_id)
@@ -229,12 +248,12 @@ class Event < ActiveRecord::Base
     where('events.ends_at < ?', Time.now.utc)
   end
 
-  def date_in_time_zone start_or_end
-    read_attribute(start_or_end).in_time_zone(ActiveSupport::TimeZone.new(time_zone))
+  def date_in_time_zone(start_or_end)
+    self[start_or_end].in_time_zone(ActiveSupport::TimeZone.new(time_zone))
   end
 
   def upcoming?
-    ends_at > Time.now
+    ends_at > Time.zone.now
   end
 
   def past?
@@ -250,7 +269,7 @@ class Event < ActiveRecord::Base
   end
 
   def rsvp_for_user(user)
-    rsvps.find_by_user_id(user.id)
+    rsvps.find_by(user_id: user.id)
   end
 
   def no_rsvp?(user)
@@ -283,6 +302,7 @@ class Event < ActiveRecord::Base
 
   def checkiner?(user)
     return true if organizer?(user)
+
     user.admin? || user.event_checkiner?(self)
   end
 
@@ -319,12 +339,13 @@ class Event < ActiveRecord::Base
 
   def session_details
     event_sessions.map do |e|
-      {name: e.name, starts_at: e.starts_at, ends_at: e.ends_at}
+      { name: e.name, starts_at: e.starts_at, ends_at: e.ends_at }
     end
   end
 
   def allowed_operating_systems
     return OperatingSystem.all unless restrict_operating_systems
+
     OperatingSystem.all.select { |os| allowed_operating_system_ids.include?(os.id) }
   end
 
@@ -343,7 +364,7 @@ class Event < ActiveRecord::Base
 
   def as_json(options = {})
     options = {
-      only: [:id, :title, :student_rsvp_limit],
+      only: %i[id title student_rsvp_limit imported_event_data],
       methods: [:location]
     }.merge(options)
     super(options).merge(
@@ -362,51 +383,53 @@ class Event < ActiveRecord::Base
     self
   end
 
-  def levels
-    course[:levels]
+  delegate :levels, to: :course
+
+  def asks_custom_question?
+    custom_question.present?
   end
 
   private
 
-  DEFAULT_DETAIL_FILES = Dir[Rails.root.join('app', 'models', 'event_details', '*.html')]
+  DEFAULT_DETAIL_FILES = Dir[Rails.root.join('app/models/event_details/*.html')]
   DEFAULT_DETAILS = DEFAULT_DETAIL_FILES.each_with_object({}) do |f, hsh|
     hsh[File.basename(f)] = File.read(f)
   end
 
   def set_defaults
-    if self.has_attribute?(:details)
-      self.details ||= Event::DEFAULT_DETAILS['default_details.html']
-      self.student_details ||= Event::DEFAULT_DETAILS['default_student_details.html']
-      self.volunteer_details ||= Event::DEFAULT_DETAILS['default_volunteer_details.html']
-      self.survey_greeting ||= Event::DEFAULT_DETAILS['default_survey_greeting.html']
-      self.allowed_operating_system_ids ||= OperatingSystem.all.map(&:id)
-    end
+    return unless has_attribute?(:details)
+
+    self.details ||= Event::DEFAULT_DETAILS['default_details.html']
+    self.student_details ||= Event::DEFAULT_DETAILS['default_student_details.html']
+    self.volunteer_details ||= Event::DEFAULT_DETAILS['default_volunteer_details.html']
+    self.survey_greeting ||= Event::DEFAULT_DETAILS['default_survey_greeting.html']
+    self.allowed_operating_system_ids ||= OperatingSystem.all.map(&:id)
   end
 
   def association_for_role(role, waitlisted: false)
     case role
-      when Role::VOLUNTEER
-        waitlisted ? volunteer_waitlist_rsvps : volunteer_rsvps
-      when Role::STUDENT
-        waitlisted ? student_waitlist_rsvps : student_rsvps
-      else
-        raise "Can't find appropriate association for Role::#{role.name}"
+    when Role::VOLUNTEER
+      waitlisted ? volunteer_waitlist_rsvps : volunteer_rsvps
+    when Role::STUDENT
+      waitlisted ? student_waitlist_rsvps : student_rsvps
+    else
+      raise "Can't find appropriate association for Role::#{role.name}"
     end
   end
 
   def normalize_allowed_operating_system_ids
     self.allowed_operating_system_ids = nil unless restrict_operating_systems
-    if self.allowed_operating_system_ids.respond_to?(:each)
-      self.allowed_operating_system_ids.map! do |id|
-        id.try(:match, /\A\d+\z/) ? Integer(id) : id
-      end
+    return unless self.allowed_operating_system_ids.respond_to?(:each)
+
+    self.allowed_operating_system_ids.map! do |id|
+      id.try(:match, /\A\d+\z/) ? Integer(id) : id
     end
   end
 
   def update_location_counts
     location.try(:reset_events_count)
-    if location_id_changed? && location_id_was
-      Location.find(location_id_was).reset_events_count
-    end
+    return unless saved_change_to_attribute?(:location_id) && saved_changes[:location_id].first
+
+    Location.find(saved_changes[:location_id].first).reset_events_count
   end
 end

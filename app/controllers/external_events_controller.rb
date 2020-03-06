@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ExternalEventsController < ApplicationController
   before_action :authenticate_user!
 
@@ -9,7 +11,7 @@ class ExternalEventsController < ApplicationController
   def new
     authorize ExternalEvent, :edit?
     @external_event = ExternalEvent.new
-    @external_event.name = "Ruby on Rails Outreach Workshop for Women"
+    @external_event.name = 'Ruby on Rails Outreach Workshop for Women'
   end
 
   def edit
@@ -32,7 +34,7 @@ class ExternalEventsController < ApplicationController
     authorize ExternalEvent, :edit?
     @external_event = ExternalEvent.find(params[:id])
 
-    if @external_event.update_attributes(external_event_params)
+    if @external_event.update(external_event_params)
       redirect_to external_events_url, notice: 'External event was successfully updated.'
     else
       render :edit
@@ -50,6 +52,6 @@ class ExternalEventsController < ApplicationController
   private
 
   def external_event_params
-    params.require(:external_event).permit(ExternalEvent::PERMITTED_ATTRIBUTES)
+    permitted_attributes(ExternalEvent)
   end
 end

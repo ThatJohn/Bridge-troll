@@ -1,12 +1,12 @@
-class Location < ActiveRecord::Base
-  PERMITTED_ATTRIBUTES = [:name, :address_1, :address_2, :city, :state, :zip, :region_id]
+# frozen_string_literal: true
 
+class Location < ApplicationRecord
   scope :available, -> { where(archived_at: nil) }
-  has_many :events
+  has_many :events, dependent: :nullify
   belongs_to :region, counter_cache: true
-  has_many :event_sessions
+  has_many :event_sessions, dependent: :nullify
 
-  validates_presence_of :name, :address_1, :city, :region
+  validates :name, :address_1, :city, presence: true
   unless Rails.env.test?
     geocoded_by :full_address
     after_validation :geocode
@@ -25,11 +25,7 @@ class Location < ActiveRecord::Base
   end
 
   def notable_events
-    if events.published.present?
-      events.published
-    else
-      Event.where(location_id: id).where(current_state: Event.current_states.values_at(:draft, :pending_approval))
-    end
+    events.published.presence || Event.where(location_id: id).where(current_state: Event.current_states.values_at(:draft, :pending_approval))
   end
 
   def archive!
@@ -44,7 +40,7 @@ class Location < ActiveRecord::Base
     Event.where(id: events.pluck(:id) + event_sessions.pluck(:event_id))
   end
 
-  def as_json(options = {})
+  def as_json(_options = {})
     {
       name: name,
       address_1: address_1,
@@ -53,18 +49,24 @@ class Location < ActiveRecord::Base
       state: state,
       zip: zip,
       latitude: latitude,
-      longitude: longitude,
+      longitude: longitude
     }
   end
 
   def most_recent_event_date
     relevant_events = (events + event_sessions.map(&:event)).compact
     if relevant_events.present?
-      event = relevant_events.sort_by { |e| e.starts_at }.last
-      event.starts_at.in_time_zone(event.time_zone).strftime("%b %d, %Y")
+      event = relevant_events.max_by(&:starts_at)
+      event.starts_at.in_time_zone(event.time_zone).strftime('%b %d, %Y')
     else
-      "No events found."
+      'No events found.'
     end
+  end
+
+  def inferred_time_zone
+    return nil unless latitude && longitude
+
+    NearestTimeZone.to(latitude, longitude)
   end
 
   def reset_events_count

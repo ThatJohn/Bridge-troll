@@ -1,6 +1,6 @@
-class Section < ActiveRecord::Base
-  PERMITTED_ATTRIBUTES = [:name, :class_level]
+# frozen_string_literal: true
 
+class Section < ApplicationRecord
   belongs_to :event
   has_many :rsvps, dependent: :nullify
 

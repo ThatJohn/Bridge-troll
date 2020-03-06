@@ -1,0 +1,75 @@
+// Place all the styles related to the chats controller here.
+// They will automatically be included in application.css.
+// You can use Sass (SCSS) here: https://sass-lang.com/
+
+#city-selector {
+
+    li {
+        font-size: 15px;
+
+        .message-count {
+            font-weight: lighter;
+            font-size:10px;
+        }
+    }
+
+}
+
+#messages {
+    height: 550px;
+    overflow-y: scroll;
+
+    .message {
+        margin: 0 15px 15px 0;
+        display: flex;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        align-items: flex-start;
+        align-content: flex-start;            
+        overflow: auto;
+        flex-direction: row;
+        border-bottom: 1px solid #eee;
+        padding: 0 10px 10px 0;
+        
+        .avatar-container {
+            max-width: 51px;
+        }
+
+        img {
+            border-radius: 5px;
+            max-width: 50px;
+            order: 0;
+            flex: 0 1 auto;
+            align-self: auto;
+        }
+
+        .msg-meta {
+            margin-left:15px;
+            flex-wrap: wrap;
+
+            .message-user-name {
+                font-family: sans-serif;
+                font-weight: bolder;
+            }
+
+            .message-timestamp {
+                font-family: sans-serif;
+                font-weight: lighter;
+                font-size: 11px;
+            }
+        }
+
+        .message-user-name {
+            font-weight: 1000;
+        }
+
+        .message-timestamp {
+            font-weight: 100;
+        }
+    }    
+}
+
+#input-box, .input-box_text {
+    margin-top: 10px;
+    width:100%;
+}

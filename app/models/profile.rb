@@ -1,10 +1,16 @@
-class Profile < ActiveRecord::Base
-  PERMITTED_ATTRIBUTES = [:childcaring, :designing, :outreach, :linux, :macosx, :mentoring, :other, :windows, :writing, :bio, :github_username]
+# frozen_string_literal: true
 
+class Profile < ApplicationRecord
   belongs_to :user, inverse_of: :profile
 
-  validates_format_of :github_username, with: /\A([a-z0-9-]+-)*[a-z0-9]+\Z/i, allow_blank: true
+  after_initialize :remove_at_from_twitter_username
 
-  validates_presence_of :user
-  validates_uniqueness_of :user_id
+  validates :github_username, format: { with: /\A([a-z0-9-]+-)*[a-z0-9]+\Z/i, allow_blank: true }
+  validates :twitter_username, format: { with: /\A@?\w{1,15}\Z/i, allow_blank: true }
+
+  validates :user_id, uniqueness: true
+
+  def remove_at_from_twitter_username
+    self.twitter_username = twitter_username.try(:gsub, /\A@*/, '')
+  end
 end

@@ -8,13 +8,7 @@
         Bridge Troll
       <% end %>
     </title>
-    <!--[if lt IE 9]>
-      <script src="http://html5shim.googlecode.com/svn/trunk/html5.js" type="text/javascript"></script>
-    <![endif]-->
-    <%= stylesheet_link_tag  "application", :media => "all" %>
-    <% if Rails.env.test? %>
-      <%= test_only_stylesheet %>
-    <% end %>
+    <%= stylesheet_link_tag 'application', media: 'all', 'data-turbolinks-track': 'reload' %>
     <script>
       window.whenReady = function (fn) {
         if (document.readyState != 'loading'){
@@ -24,7 +18,7 @@
         }
       };
     </script>
-    <%= javascript_include_tag "application", defer: true %>
+    <%= javascript_include_tag 'application', defer: true, 'data-turbolinks-track': 'reload' %>
     <%= csrf_meta_tags %>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="format-detection" content="telephone=no">
@@ -34,11 +28,14 @@
    <%= render 'shared/navbar' %>
     <div class='container header-container'>
       <% if content_for?(:header_text) %>
-        <% if content_for?(:header_link) %>
-          <h1><%= link_to yield(:header_text), yield(:header_link) %></h1>
-        <% else %>
-          <h1><%= yield(:header_text) %></h1>
-        <% end %>
+        <h1>
+          <% if content_for?(:header_link) %>
+            <%= link_to yield(:header_text), yield(:header_link) %>
+          <% else %>
+            <%= yield(:header_text) %>
+          <% end %>
+          <%= yield(:header_extra_content) %>
+        </h1>
       <% end %>
     </div>
     <div class="container center bridgetroll-content">
@@ -51,7 +48,20 @@
 
       <%= yield %>
     </div>
-    <footer class="hide"><div class="trollholder"><%= image_tag asset_path('troll.svg'), alt: '' %></div></footer>
-   <%= render 'shared/sign_in_dialog' %>
+
+    <footer class="hide">
+      <div class="trollholder"><%= image_tag asset_path('troll.svg'), alt: '' %></div>  
+      <div class="container center footerlinks">
+        <%= link_to "About Bridge Foundry", "https://bridgefoundry.org/about", target: :_blank %>
+        <%= link_to "Past Events", past_events_events_path %>
+        <%= link_to "Code of Conduct", "https://bridgefoundry.org/code-of-conduct", target: :_blank %>
+        <%= link_to "Source Code", "https://github.com/railsbridge/bridge_troll", target: :_blank %>
+        <%= link_to "Report a Bug", "https://github.com/railsbridge/bridge_troll/issues", target: :_blank %>
+      </div>
+    </footer>
+
+    <% unless current_user %>
+      <%= render 'shared/sign_in_dialog' %>
+    <% end %>
   </body>
 </html>

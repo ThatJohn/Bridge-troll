@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Regions
   class LeadersController < ApplicationController
     before_action :authenticate_user!
@@ -10,11 +12,11 @@ module Regions
 
     def create
       authorize @region, :modify_leadership?
-      leader = RegionLeadership.new(region: @region, user_id: leader_params[:id])
+      leader = RegionLeadership.new(region: @region, user_id: leader_id_param)
       if leader.save
-        redirect_to region_leaders_path(@region), notice: "Booyah!"
+        redirect_to region_leaders_path(@region), notice: 'Booyah!'
       else
-        redirect_to region_leaders_path(@region), error: "Whoops."
+        redirect_to region_leaders_path(@region), error: 'Whoops.'
       end
     end
 
@@ -22,7 +24,7 @@ module Regions
       authorize @region, :modify_leadership?
       leadership = RegionLeadership.where(
         region: @region,
-        user_id: leader_params[:id]
+        user_id: params[:id]
       ).first
 
       leadership.destroy
@@ -34,24 +36,32 @@ module Regions
       respond_to do |format|
         format.json do
           users_not_assigned = @region.users.where(<<-SQL, @region.id)
-            id NOT IN (
+            users.id NOT IN (
               SELECT user_id FROM region_leaderships WHERE region_id = ?
             )
           SQL
 
-          render json: UserSearcher.new(users_not_assigned, params[:q])
+          render json: UserSearcher.new(users_not_assigned, search_query)
         end
       end
     end
 
     private
 
-    def load_region
-      @region = Region.find(params[:region_id])
+    def search_query
+      params.require(:q)
     end
 
-    def leader_params
-      params.permit(:id, :region_id)
+    def load_region
+      @region = Region.find(region_id_param)
+    end
+
+    def region_id_param
+      params.require(:region_id)
+    end
+
+    def leader_id_param
+      params.require(:region_leader).require(:id)
     end
   end
 end

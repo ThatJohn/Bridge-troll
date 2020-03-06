@@ -1,5 +1,5 @@
 <div class="rsvp-form">
-  <%= simple_form_for([@event, @rsvp], html: {:class => 'form-vertical'},
+  <%= simple_form_for([@event, @rsvp], html: {class: 'form-vertical'},
                       wrapper_mappings: {
                         boolean: :vertical_boolean,
                         radio_buttons: :vertical_radio_and_checkboxes
@@ -30,7 +30,7 @@
         </p>
         <%= render partial: 'rsvps/class_levels', locals: {
           f: f,
-          levels: (@rsvp.event.course || Course::RAILS).levels,
+          levels: (@rsvp.event.course || Course.find_by_name("RAILS")).levels,
           show_no_preference: false
         } %>
       </div>
@@ -38,7 +38,7 @@
       <% if @event.plus_one_host_toggle %>
         <div class="field">
           <h2>Are you someone's plus-one?</h2>
-          <%= render :partial => "shared/plus_one_disclaimer" %>
+          <%= render partial: "shared/plus_one_disclaimer" %>
           <div class="field">
             <%= f.input :plus_one_host %>
           </div>
@@ -82,7 +82,7 @@
           <div class="field">
             <%= render partial: 'rsvps/class_levels', locals: {
               f: f,
-              levels: (@rsvp.event.course || Course::RAILS).levels,
+              levels: (@rsvp.event.course || Course.find_by_name("RAILS")).levels,
               show_no_preference: true
             } %>
           </div>
@@ -95,7 +95,7 @@
       <%= f.collection_check_boxes(:event_session_ids,
                                    @rsvp.selectable_sessions,
                                    :id,
-                                   -> (session) { "#{session.name}: #{formatted_session_date(session)} #{formatted_session_timerange(session)}" },
+                                   -> (session) { "#{session.name}: #{formatted_date(session)} #{formatted_session_timerange(session)}" },
                                    {
                                      item_wrapper_class: 'checkbox_row',
                                      item_wrapper_tag: 'div',
@@ -117,10 +117,18 @@
       <% end %>
     </div>
 
-    <div class="field">
-      <p class="question">The food's on us. Let us know if you have any dietary restrictions.</p>
-      <%= render partial: 'rsvps/dietary_restrictions', locals: {f: f} %>
-    </div>
+    <% if @event.asks_custom_question? %>
+      <div class="field question">
+        <%= f.input :custom_question_answer, label: @event.custom_question, input_html: {rows: 3} %>
+      </div>
+    <% end %>
+
+    <% if @event.food_provided? %>
+      <div class="field">
+        <p class="question">The food's on us. Let us know if you have any dietary restrictions.</p>
+        <%= render partial: 'rsvps/dietary_restrictions', locals: {f: f} %>
+      </div>
+    <% end %>
 
     <% if @event.has_childcare? %>
       <div class="field question">

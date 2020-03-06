@@ -1,4 +1,6 @@
-class AddChapterLeadershipsAgain < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class AddChapterLeadershipsAgain < ActiveRecord::Migration[4.2]
   def change
     create_table :chapter_leaderships do |t|
       t.integer :user_id

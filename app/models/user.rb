@@ -1,6 +1,6 @@
-class User < ActiveRecord::Base
-  PERMITTED_ATTRIBUTES = [:first_name, :last_name, :email, :password, :password_confirmation, :remember_me, :time_zone, :gender, :allow_event_email]
+# frozen_string_literal: true
 
+class User < ApplicationRecord
   before_validation :build_profile, on: :create
 
   devise :database_authenticatable, :registerable, :omniauthable,
@@ -8,23 +8,28 @@ class User < ActiveRecord::Base
          :confirmable, :timeoutable
 
   has_many :authentications, inverse_of: :user, dependent: :destroy
-  has_many :rsvps, -> { where user_type: 'User' }, dependent: :destroy
+  has_many :rsvps, -> { where user_type: 'User' }, dependent: :destroy, inverse_of: :bridgetroll_user
   has_many :events, -> { published }, through: :rsvps
   has_many :region_leaderships, dependent: :destroy, inverse_of: :user
   has_many :chapter_leaderships, dependent: :destroy, inverse_of: :user
   has_many :organization_leaderships, dependent: :destroy, inverse_of: :user
-  has_many :event_emails, foreign_key: :sender_id, dependent: :nullify
+  has_many :event_emails, foreign_key: :sender_id, dependent: :nullify, inverse_of: :recipients
 
   has_one :profile, dependent: :destroy, inverse_of: :user, validate: true
-  has_and_belongs_to_many :regions
+  has_many :regions_users, dependent: :destroy
+  has_many :regions, through: :regions_users
+
+  has_many :organization_subscriptions, dependent: :destroy
+  has_many :subscribed_organizations, through: :organization_subscriptions, class_name: 'Organization'
+  has_many :messages
 
   accepts_nested_attributes_for :profile, update_only: true
 
-  validates_presence_of :first_name, :last_name, :profile
-  validates_inclusion_of :time_zone, in: ActiveSupport::TimeZone.all.map(&:name), allow_blank: true
+  validates :first_name, :last_name, :profile, presence: true
+  validates :time_zone, inclusion: { in: ActiveSupport::TimeZone.all.map(&:name), allow_blank: true }
 
   def self.from_omniauth(omniauth)
-    authentication = Authentication.where(provider: omniauth['provider'], uid: omniauth['uid'].to_s).first
+    authentication = Authentication.find_by(provider: omniauth['provider'], uid: omniauth['uid'].to_s)
     if authentication
       authentication.user
     else
@@ -35,7 +40,7 @@ class User < ActiveRecord::Base
   end
 
   def password_required?
-    (authentications.empty? || !password.blank?) && super
+    (authentications.empty? || password.present?) && super
   end
 
   def apply_omniauth(omniauth)
@@ -82,5 +87,9 @@ class User < ActiveRecord::Base
 
   def event_checkiner?(event)
     event_attendance(event)[:checkiner]
+  end
+
+  def org_leader?
+    organization_leaderships.any?
   end
 end

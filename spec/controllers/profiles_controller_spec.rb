@@ -1,31 +1,28 @@
+# frozen_string_literal: true
+
 require 'rails_helper'
 
 describe ProfilesController do
+  let(:user) { create(:user) }
+  let(:other_user) { create(:user) }
+
   before do
-    @user = create(:user)
-    @other_user = create(:user)
-    sign_in @user
+    sign_in user
   end
 
-  describe "showing profiles" do
+  describe 'showing profiles' do
     render_views
 
-    it "lets users view their own profile" do
-      get :show, user_id: @user.id
-      expect(response).to be_success
-      expect(response.body).to include(ERB::Util.html_escape(@user.full_name))
+    it 'lets users view their own profile' do
+      get :show, params: { user_id: user.id }
+      expect(response).to be_successful
+      expect(response.body).to include(ERB::Util.html_escape(user.full_name))
     end
 
     it "lets users view other user's profiles" do
-      get :show, user_id: @other_user.id
-      expect(response).to be_success
-      expect(response.body).to include(ERB::Util.html_escape(@other_user.full_name))
-    end
-
-    it "returns 406 for requests outside of html format" do
-      get :show, user_id: @user.id, format: :json
-      expect(response).not_to be_success
-      expect(response.status).to eq(406)
+      get :show, params: { user_id: other_user.id }
+      expect(response).to be_successful
+      expect(response.body).to include(ERB::Util.html_escape(other_user.full_name))
     end
   end
 end

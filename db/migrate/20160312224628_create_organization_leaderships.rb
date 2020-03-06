@@ -1,4 +1,6 @@
-class CreateOrganizationLeaderships < ActiveRecord::Migration
+# frozen_string_literal: true
+
+class CreateOrganizationLeaderships < ActiveRecord::Migration[4.2]
   def change
     create_table :organization_leaderships do |t|
       t.references :user, index: true, foreign_key: true

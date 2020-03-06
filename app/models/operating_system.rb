@@ -1,6 +1,20 @@
+# frozen_string_literal: true
+
 class OperatingSystem < ActiveHash::Base
   include ActiveHash::Enum
   self.data = [
+    {
+      id: 15,
+      name: 'OSX_HIGH_SIERRA',
+      type: :osx,
+      title: 'Mac OS X - High Sierra (10.13)'
+    },
+    {
+      id: 14,
+      name: 'OSX_SIERRA',
+      type: :osx,
+      title: 'Mac OS X - Sierra (10.12)'
+    },
     {
       id: 12,
       name: 'OSX_EL_CAPITAN',
@@ -42,6 +56,12 @@ class OperatingSystem < ActiveHash::Base
       name: 'OSX_LEOPARD',
       type: :osx,
       title: 'Mac OS X - Leopard (10.5)'
+    },
+    {
+      id: 13,
+      name: 'WINDOWS_10',
+      type: :windows,
+      title: 'Windows 10'
     },
     {
       id: 5,

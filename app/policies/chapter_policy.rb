@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 class ChapterPolicy < ApplicationPolicy
   def new?
-    user && (user.admin?|| user.organization_leaderships.present?)
+    user && (user.admin? || user.organization_leaderships.present?)
   end
 
   def update?
-    record.has_leader?(user) || record.organization.has_leader?(user)
+    record.leader?(user) || record.organization.leader?(user)
   end
 
   def create?
@@ -12,10 +14,17 @@ class ChapterPolicy < ApplicationPolicy
   end
 
   def destroy?
-    user && user.admin?
+    user&.admin?
   end
 
   def modify_leadership?
     update?
+  end
+
+  def permitted_attributes
+    %i[
+      name
+      organization_id
+    ]
   end
 end

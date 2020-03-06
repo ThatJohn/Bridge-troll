@@ -1,78 +1,104 @@
+# frozen_string_literal: true
+
 source 'https://rubygems.org'
 
-ruby '2.3.1'
+ruby '2.6.5'
 
-gem 'dotenv-rails', groups: [:development, :test]
-
-gem 'rails', '4.2.6'
-gem 'devise', '~> 4.1.0'
-gem 'pundit'
-gem 'puma'
-gem 'jquery-rails'
-gem 'nested_form'
 gem 'active_hash'
-gem 'sanitize'
-gem 'gmaps4rails'
+# OPTIMIZE: and cache expensive computations for faster boot times. It's
+# `require`d in a specific way in config/boot.rb
+gem 'backbone-on-rails'
+gem 'bootsnap', require: false
+gem 'bootstrap-sass'
+gem 'coffee-rails'
+gem 'devise'
+gem 'font-awesome-rails'
 gem 'geocoder'
+gem 'gmaps4rails'
+gem 'gravatar_image_tag'
+gem 'handlebars_assets'
+gem 'icalendar'
+gem 'jquery-rails'
+gem 'jquery-ui-rails'
+gem 'nearest_time_zone'
+gem 'nested_form'
+gem 'omniauth-facebook'
+gem 'omniauth-github'
 gem 'omniauth-google-oauth2'
 gem 'omniauth-meetup'
-gem 'omniauth-facebook'
+gem 'omniauth-rails_csrf_protection'
 gem 'omniauth-twitter'
-gem 'omniauth-github'
-gem 'gravatar_image_tag'
-gem 'simple_form'
+gem 'puma'
+gem 'pundit'
 gem 'rack-canonical-host'
-gem 'icalendar'
-gem 'pg' if ENV['FORCE_POSTGRES']
-gem 'rack-mini-profiler'
-gem 'bower-rails'
+gem 'rack-cors'
+gem 'rack-mini-profiler', require: false
+gem 'rails', '~> 5.2.4.1'
+gem 'sanitize'
+gem 'sassc-rails'
+gem 'simple_form'
+gem 'sprockets'
+gem 'uglifier'
+gem 'turbolinks'
+# faster interoperable json
+gem 'multi_json'
+gem 'oj'
+gem 'actioncable'
+gem 'redis'
 
 group :production do
-  gem 'pg'
-  gem 'rails_12factor'
-  gem 'heroku_rails_deflate'
   gem 'newrelic_rpm'
-  gem 'sentry-raven'
+  gem 'pg'
   gem 'rack-timeout'
+  gem 'sentry-raven'
 end
 
-gem 'handlebars_assets'
-gem 'sass-rails'
-gem 'coffee-rails'
-gem 'uglifier'
-gem 'bootstrap-sass'
-gem 'font-awesome-rails'
-gem 'jquery-ui-rails'
-gem 'backbone-on-rails'
-
 group :development do
-  gem 'quiet_assets'
+  gem 'better_errors'
+  gem 'binding_of_caller'
+  gem 'bullet'
+  gem 'listen'
   gem 'rb-fsevent'
-  gem "bullet"
-  gem "heroku_san"
-  gem "better_errors"
-  gem "binding_of_caller"
-  gem "byebug"
+  gem 'spring'
+  gem 'spring-commands-rspec'
 end
 
 group :test, :development do
+  gem 'awesome_print'
+  gem 'byebug'
+  gem 'chrome_remote', require: false
+  gem 'dotenv-rails'
   gem 'jasmine'
   gem 'jasmine-jquery-rails'
-  gem 'sqlite3'
-  gem 'rspec-rails'
+  gem 'parallel_tests'
+  gem 'pry'
+  gem 'rails-controller-testing', require: false
+  gem 'rake', require: false
   gem 'rspec-collection_matchers'
-  gem 'awesome_print'
+  gem 'rspec-rails'
+  gem 'rubocop', require: false
+  gem 'rubocop-performance', require: false
+  gem 'rubocop-rails', require: false
+  gem 'rubocop-rspec', require: false
+  gem 'rubocop-thread_safety', require: false
+  gem 'sqlite3'
+end
+
+if ENV['FORCE_POSTGRES']
+  group :development, :test do
+    gem 'pg' # rubocop:disable Bundler/DuplicatedGem
+  end
 end
 
 group :test do
-  gem 'webmock'
-  gem "factory_girl_rails"
-  gem 'capybara', '>= 2.0.1'
-  gem "poltergeist"
-  gem "launchy"
-  gem 'shoulda-matchers'
-  gem "faker"
+  gem 'capybara'
   gem 'capybara-screenshot'
-  # Remove after Rails 5: https://github.com/rails/rails/pull/18458
-  gem 'test_after_commit'
+  gem 'codecov', require: false
+  gem 'database_cleaner'
+  gem 'factory_bot_rails'
+  gem 'faker'
+  gem 'selenium-webdriver', require: false
+  gem 'shoulda-matchers'
+  gem 'simplecov', require: false
+  gem 'webmock'
 end

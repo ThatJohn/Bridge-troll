@@ -1,10 +1,12 @@
+# frozen_string_literal: true
+
 # anonymizes historical data to use for attendance forecasting.
 class DatabaseAnonymizer
   def initialize(logger = nil)
     require 'faker'
 
     @logger = logger || Logger.new(STDOUT)
-    @logger.formatter = proc do |severity, datetime, progname, msg|
+    @logger.formatter = proc do |_severity, _datetime, _progname, msg|
       "#{msg}\n"
     end
   end
@@ -39,10 +41,11 @@ class DatabaseAnonymizer
 
   def anonymize_user(user)
     return if user.email == 'admin@example.com' || user.email == 'organizer@example.com'
+
     user.email = "email_#{user.id}@example.com"
     user.first_name = Faker::Name.first_name
     user.last_name = Faker::Name.last_name
-    user.gender = %w(male female genderqueer).sample
+    user.gender = %w[male female genderqueer].sample
     user.last_sign_in_ip = '127.0.0.1'
     user.current_sign_in_ip = '127.0.0.1'
     user.password = 'password'
@@ -56,15 +59,15 @@ class DatabaseAnonymizer
   end
 
   def anonymize_survey(survey)
-    survey.good_things = Faker::Lorem.sentence(1)
-    survey.bad_things  = Faker::Lorem.sentence(1)
-    survey.other_comments = Faker::Lorem.sentence(1)
+    survey.good_things = Faker::Lorem.sentence(word_count: 1)
+    survey.bad_things  = Faker::Lorem.sentence(word_count: 1)
+    survey.other_comments = Faker::Lorem.sentence(word_count: 1)
     survey.save!
   end
 
   def anonymize_rsvp(rsvp)
-    rsvp.subject_experience = Faker::Lorem.sentence(10)
-    rsvp.teaching_experience = Faker::Lorem.sentence(10)
+    rsvp.subject_experience = Faker::Lorem.sentence(word_count: 10)
+    rsvp.teaching_experience = Faker::Lorem.sentence(word_count: 10)
     rsvp.job_details = Faker::Hacker.say_something_smart
     rsvp.needs_childcare = '0'
     rsvp.childcare_info = nil
@@ -75,7 +78,8 @@ class DatabaseAnonymizer
 
   def anonymize_profile(profile)
     profile.other = Faker::Company.catch_phrase
-    profile.github_username = "#{Faker::Hacker.noun.gsub(' ', '-').downcase}#{Random.rand(10_000_000)}"
+    profile.github_username = "#{Faker::Hacker.noun.tr(' ', '-').downcase}#{Random.rand(10_000_000)}"
+    profile.twitter_username = "#{Faker::Hacker.noun.tr(' ', '_').downcase}#{Random.rand(100)}"
     profile.bio = Faker::Company.bs
     profile.save!
   end
@@ -87,8 +91,8 @@ class DatabaseAnonymizer
   end
 
   def anonymize_event_email(event_email)
-    event_email.subject = Faker::Lorem.sentence(1)
-    event_email.body = Faker::Lorem.sentence(3)
+    event_email.subject = Faker::Lorem.sentence(word_count: 1)
+    event_email.body = Faker::Lorem.sentence(word_count: 3)
     event_email.save!
   end
 

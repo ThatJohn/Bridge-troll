@@ -1,22 +1,35 @@
 language: ruby
 rvm:
-  - 2.3.1
-bundler_args: "--without development --without production --deployment"
-cache: bundler
-env:
-  - "PATH=$PWD/node_modules/.bin:$PATH"
-before_install:
-  - 'npm install'
-  - 'echo ''gem: --no-ri --no-rdoc'' > ~/.gemrc'
-  - "rvm @global do gem uninstall bundler -x && gem install bundler"
-before_script:
-  - 'bundle exec rake bower:install:development'
-  - "./config/before-travis.sh"
-script:
-  - "bundle exec rake"
-  - "bundle exec rake jasmine:ci"
+  - 2.6.5
+bundler_args: "--without development production --deployment"
+cache:
+  bundler: true
+  yarn: true
+  directories:
+    - node_modules
+    - tmp
 
-notifications:
-  email: false
+addons:
+  chrome: stable
+
+env:
+  global:
+    - "PATH=$PWD/node_modules/.bin:$PATH"
+
+matrix:
+  include:
+  - env: FORCE_POSTGRES=true
+    services:
+    - postgresql
+  - env: DO_NOT_FORCE_POSTGRES=true
+
+before_install:
+  - 'env'
+  - 'yarn install'
+  - 'echo ''gem: --no-document'' > ~/.gemrc'
+  - 'gem update --system'
+  - 'gem install bundler'
+before_script:
+  - 'bundle exec rake parallel:setup'
 
 sudo: false

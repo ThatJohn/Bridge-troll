@@ -1,15 +1,16 @@
+# frozen_string_literal: true
+
 class SurveysController < ApplicationController
   before_action :authenticate_user!
   before_action :find_event
-  before_action :find_rsvp, except: [:index, :preview]
+  before_action :find_rsvp, only: %i[new create]
 
   def new
     authorize @rsvp, :survey?
     @survey = Survey.where(rsvp_id: @rsvp.id).first_or_initialize
+    return unless @survey.persisted?
 
-    if @survey.persisted?
-      flash[:error] = "It looks like you've already taken this survey! Email your workshop organizer with any other feedback you have."
-    end
+    flash[:error] = "It looks like you've already taken this survey! Email your workshop organizer with any other feedback you have."
   end
 
   def create
@@ -18,7 +19,7 @@ class SurveysController < ApplicationController
     @survey.rsvp_id = @rsvp.id
 
     if @survey.save
-      flash[:notice] = "Thanks for taking the survey!"
+      flash[:notice] = 'Thanks for taking the survey!'
       redirect_to root_path
     else
       render :new
@@ -27,8 +28,6 @@ class SurveysController < ApplicationController
 
   def index
     authorize @event, :edit?
-    @student_surveys = Survey.where(rsvp_id: @event.rsvps.where(role_id: Role::STUDENT.id).pluck(:id))
-    @volunteer_surveys = Survey.where(rsvp_id: @event.volunteer_rsvps.pluck(:id))
   end
 
   def preview
@@ -42,7 +41,7 @@ class SurveysController < ApplicationController
   private
 
   def survey_params
-    params.require(:survey).permit(Survey::PERMITTED_ATTRIBUTES)
+    permitted_attributes(Survey)
   end
 
   def find_event
@@ -51,5 +50,9 @@ class SurveysController < ApplicationController
 
   def find_rsvp
     @rsvp = current_user.rsvps.find_by(event_id: @event.id)
+    return if @rsvp
+
+    flash[:error] = "It looks like you're trying to take the survey for an event you didn't attend. Maybe you're signed in with the wrong account?"
+    redirect_to event_path(@event)
   end
 end

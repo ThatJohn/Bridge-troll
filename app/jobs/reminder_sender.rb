@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class ReminderSender
   def self.send_all_reminders
     UpcomingEventsQuery.new.find_each do |event|
@@ -18,7 +20,7 @@ class ReminderSender
     puts "Sending #{due_reminders.count} reminders for #{event.title}..." unless Rails.env.test?
     due_reminders.find_each do |rsvp|
       RsvpMailer.reminder(rsvp).deliver_now
-      rsvp.update_attributes!(reminded_at: Time.now)
+      rsvp.update!(reminded_at: Time.zone.now)
     end
   end
 
@@ -27,7 +29,7 @@ class ReminderSender
     puts "Sending #{due_reminders.count} reminders for #{event_session.event.title} - #{event_session.name}..." unless Rails.env.test?
     due_reminders.find_each do |rsvp_session|
       RsvpMailer.reminder_for_session(rsvp_session).deliver_now
-      rsvp_session.update_attributes!(reminded_at: Time.now)
+      rsvp_session.update!(reminded_at: Time.zone.now)
     end
   end
 end
@@ -39,8 +41,8 @@ class UpcomingEventsQuery
 
   def find_each(&block)
     @relation
-      .where("events.starts_at > ?", Time.zone.now)
-      .where("events.starts_at < ?", Time.zone.now + 3.days)
+      .where('events.starts_at > ?', Time.zone.now)
+      .where('events.starts_at < ?', Time.zone.now + 3.days)
       .find_each(&block)
   end
 end

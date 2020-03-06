@@ -2,9 +2,9 @@
 
 <h2>Who can see this page?</h2>
 <div>
-  Your Bridge Troll admins are the following <%= pluralize(@admins.count, "people") %>:
+  Your Bridge Troll admins are the following <%= pluralize(@data.admins.length, "people") %>:
   <ul>
-    <% @admins.each do |admin| %>
+    <% @data.admins.each do |admin| %>
       <li><%= link_to admin.full_name, user_profile_path(admin) %></li>
     <% end %>
   </ul>
@@ -12,18 +12,32 @@
 
 <h2>Who can approve events?</h2>
 <div>
-  Your Bridge Troll event approvers are all the above admins plus these <%= pluralize(@publishers.count, "people") %>:
+  Your Bridge Troll event approvers are all the above admins plus these <%= pluralize(@data.publishers.length, "people") %>:
   <ul>
-    <% @publishers.each do |publisher| %>
+    <% @data.publishers.each do |publisher| %>
       <li><%= link_to publisher.full_name, user_profile_path(publisher) %></li>
     <% end %>
   </ul>
 </div>
 
+<h2>Who can add external events?</h2>
+<div>
+  Your Bridge Troll external event editors are all the above admins plus these <%= pluralize(@data.external_event_editors.length, "people") %>:
+  <ul>
+    <% @data.external_event_editors.each do |external_event_editor| %>
+      <li><%= link_to external_event_editor.full_name, user_profile_path(external_event_editor) %></li>
+    <% end %>
+  </ul>
+</div>
+
+<h2>How many users are there?</h2>
+<div>
+  <ul>
+    <li><%= link_to User.count, :users %></li>
+  </ul>
+</div>
+
 <h2># of authentication providers set up</h2>
-
-<strong><%= User.where('encrypted_password != ?', '').count %></strong> out of <%= User.count %> users have set up a password to log in to Bridge Troll.
-
 <div class="row">
   <div class="col-md-4">
     <table class='table table-bordered table-condensed table-striped'>
@@ -34,10 +48,10 @@
       </tr>
       </thead>
       <tbody>
-      <% @user_authentication_counts.keys.sort.reverse.each do |authentication_count| %>
+      <% @data.user_authentication_counts.each do |row| %>
         <tr>
-          <td><%= authentication_count %></td>
-          <td><%= @user_authentication_counts[authentication_count] %></td>
+          <td><%= row.authentications_count %></td>
+          <td><%= row.count %></td>
         </tr>
       <% end %>
       </tbody>
@@ -56,10 +70,14 @@
       </tr>
       </thead>
       <tbody>
-      <% @authentication_counts.each do |provider, count| %>
+      <tr>
+        <td>password</td>
+        <td><%= User.where('encrypted_password != ?', '').count %></td>
+      </tr>
+      <% @data.authentication_counts.each do |row| %>
         <tr>
-          <td><%= provider %></td>
-          <td><%= count %></td>
+          <td><%= row.provider %></td>
+          <td><%= row.count %></td>
         </tr>
       <% end %>
       </tbody>
@@ -70,7 +88,7 @@
 <h2>Region Membership</h2>
 <div class="row">
   <div class="col-md-8 col-lg-7">
-    <table class='table table-bordered table-condensed table-striped datatable-sorted'>
+    <table class='table table-bordered table-condensed table-striped datatable-sorted' data-page-length="10">
       <thead>
       <tr>
         <th>Region</th>
@@ -78,10 +96,10 @@
       </tr>
       </thead>
       <tbody>
-      <% Region.all.each do |region| %>
+      <% @data.region_user_counts.each do |row| %>
         <tr>
-          <td><%= region.name %></td>
-          <td><%= region.users.count %></td>
+          <td><%= row.name %></td>
+          <td><%= row.count %></td>
         </tr>
       <% end %>
       </tbody>
@@ -91,9 +109,9 @@
 
 <h2>Spammers</h2>
 <div>
-  <%= pluralize(@spammers.count, "user has", "users have") %> been flagged as a spammer.
+  <%= pluralize(@data.spammers.length, "user has", plural: "users have") %> been flagged as a spammer.
   <ul>
-    <% @spammers.each do |spammer| %>
+    <% @data.spammers.each do |spammer| %>
       <li><%= link_to spammer.full_name, user_profile_path(spammer) %></li>
     <% end %>
   </ul>
@@ -101,12 +119,34 @@
 
 <h2>Spam events</h2>
 <div>
-  <%= pluralize(@spam_events.count, "event has", "events have") %> been marked as spam.
+  <%= pluralize(@data.spam_events.length, "event has", plural: "events have") %> been marked as spam.
   <ul>
-    <% @spam_events.each do |event| %>
+    <% @data.spam_events.each do |event| %>
       <li><%= link_to event.title, event %></li>
     <% end %>
   </ul>
+</div>
+
+<h2>Recent survey responses</h2>
+<div class="row">
+  <div class="col-md-8 col-lg-7">
+    <table class='table table-bordered table-condensed table-striped datatable-sorted'>
+      <thead>
+      <tr>
+        <th>Event</th>
+        <th>Survey Responses</th>
+      </tr>
+      </thead>
+      <tbody>
+      <% Event.past.order('ends_at DESC').first(10).each do |event| %>
+        <tr>
+          <td><%= link_to event.title, event %></td>
+          <td><%= link_to event.surveys.count, event_surveys_path(event) %></td>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
 </div>
 
 <h2>System Health</h2>
@@ -125,3 +165,7 @@
   tip: "Intentionally raise an exception (to test whether exception handling is configured correctly)",
   confirm: 'Are you sure?'
 } %>
+
+<h2>Links!</h2>
+
+<%= link_to 'Edit Courses', courses_path, class: 'btn' %>

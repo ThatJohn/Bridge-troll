@@ -3,7 +3,7 @@
 <h3>Potential Leaders</h3>
 <%= render 'shared/user_chooser',
            action: chapter_leaders_path(@chapter),
-           select_id: '',
+           select_id: 'chapter_leader',
            foreign_key: 'id',
            url: potential_chapter_leaders_path(@chapter),
            choices: []
@@ -26,8 +26,8 @@
       <td><%= leader.email %></td>
       <td>
         <% if leader.id != current_user.id %>
-          <%= button_to 'Remove', chapter_leaders_path(@chapter, leader), method: :delete,
-                        :form => {:style => "margin-bottom : 0;"}, :class => "btn btn-mini" %>
+          <%= button_to 'Remove', chapter_leader_path(@chapter, leader), method: :delete,
+                        form: {style: "margin-bottom : 0;"}, class: "btn btn-mini" %>
         <% end %>
       </td>
     </tr>

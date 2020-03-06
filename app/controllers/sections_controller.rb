@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SectionsController < ApplicationController
   before_action :authenticate_user!
   before_action :find_event
@@ -11,7 +13,7 @@ class SectionsController < ApplicationController
   def update
     authorize @event, :edit?
     section = @event.sections.find(params[:id])
-    if section.update_attributes(section_params)
+    if section.update(section_params)
       render json: section
     else
       render json: {}, status: :unprocessable_entity
@@ -34,10 +36,10 @@ class SectionsController < ApplicationController
   private
 
   def find_event
-    @event = Event.find_by_id(params[:event_id])
+    @event = Event.find_by(id: params[:event_id])
   end
 
   def section_params
-    params.require(:section).permit(Section::PERMITTED_ATTRIBUTES)
+    permitted_attributes(Section)
   end
 end

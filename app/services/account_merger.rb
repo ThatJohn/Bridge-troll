@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class AccountMerger
   def initialize(user_to_keep, user_to_merge)
     @user_to_keep = user_to_keep
@@ -9,9 +11,9 @@ class AccountMerger
 
     to_destroy = Rsvp.where(event_id: (
         @user_to_merge.rsvps.pluck('event_id') & @user_to_keep.rsvps.pluck('event_id')
-       ), user_id: @user_to_merge.id, user_type: 'User')
+      ), user_id: @user_to_merge.id, user_type: 'User')
 
-    Rails.logger.info(<<-EOT.strip_heredoc)
+    Rails.logger.info(<<-USER_PROMPT.strip_heredoc)
 
       Ready to merge #{user_desc(@user_to_merge)}'s data onto #{user_desc(@user_to_keep)}!
 
@@ -19,9 +21,9 @@ class AccountMerger
       #{@user_to_merge.rsvps.count - to_destroy.count} RSVP(s) will be adopted by #{user_desc(@user_to_keep)}
 
       Is this cool? (y/n)
-    EOT
+    USER_PROMPT
 
-    return unless get_answer.downcase == 'y'
+    return unless gets.chomp.casecmp('y')
 
     to_destroy.destroy_all
 
@@ -32,10 +34,6 @@ class AccountMerger
   end
 
   private
-
-  def get_answer
-    gets.chomp
-  end
 
   def user_desc(user)
     "#{user.full_name} (#{user.id})"
